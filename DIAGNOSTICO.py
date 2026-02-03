@@ -47,6 +47,7 @@ opts_liderazgo = [
     "(3) Estructura Funcional: Organigrama claro, gerentes resuelven el día a día.",
     "(4) Gestión por Indicadores: Decisiones basadas en KPIs y reportes.",
     "(5) Gobierno Corporativo: Consejo, sucesión y cultura de autogestión."
+]
 
  opts_procesos = [
     "(1) Tribal/Empírico: Conocimiento solo en la cabeza de la gente.",
@@ -193,4 +194,5 @@ if st.button("Generar Reporte y Enviar al Consultor"):
                                data=pdf_bytes, 
                                file_name="mi_diagnostico.pdf", 
                                mime="application/pdf")
+
 
