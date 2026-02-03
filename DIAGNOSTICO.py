@@ -41,22 +41,27 @@ def generar_pdf(nombre_empresa, contacto, nivel, puntaje, medicina):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     
-    # Contenido
-    pdf.cell(200, 10, txt=f"Empresa: {nombre_empresa}", ln=True)
-    pdf.cell(200, 10, txt=f"Contacto: {contacto}", ln=True)
-    pdf.cell(200, 10, txt=f"Nivel Detectado: {nivel}", ln=True)
-    pdf.cell(200, 10, txt=f"Puntaje: {puntaje}/25", ln=True)
+    # Función para limpiar texto (quita emojis y caracteres raros)
+    def clean(text):
+        return str(text).encode('latin-1', 'replace').decode('latin-1')
+
+    # Contenido del PDF (Usamos clean() para evitar errores)
+    pdf.cell(200, 10, txt=clean(f"Empresa: {nombre_empresa}"), ln=True)
+    pdf.cell(200, 10, txt=clean(f"Contacto: {contacto}"), ln=True)
+    pdf.cell(200, 10, txt=clean(f"Nivel Detectado: {nivel}"), ln=True)
+    pdf.cell(200, 10, txt=clean(f"Puntaje: {puntaje}/25"), ln=True)
     pdf.ln(10)
     
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Recomendacion Estrategica:", ln=True)
     pdf.set_font("Arial", size=11)
-    pdf.multi_cell(0, 10, txt=medicina)
+    
+    # Multi_cell para textos largos
+    pdf.multi_cell(0, 10, txt=clean(medicina))
     
     return pdf.output(dest='S').encode('latin-1')
 
 def enviar_correo(destinatario, asunto, cuerpo, archivo_pdf, nombre_archivo):
-    # Credenciales desde Streamlit Secrets
     try:
         remitente = st.secrets["correo"]["usuario"]
         password = st.secrets["correo"]["password"]
@@ -77,7 +82,6 @@ def enviar_correo(destinatario, asunto, cuerpo, archivo_pdf, nombre_archivo):
     part.add_header('Content-Disposition', f'attachment; filename="{nombre_archivo}"')
     msg.attach(part)
     
-    # Enviar
     try:
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
@@ -133,7 +137,6 @@ opts_mercado = [
     "(5) Dominante/Innovador: Marcamos la tendencia del mercado."
 ]
 
-# Columnas con indentación corregida
 with col1:
     st.subheader("A. Liderazgo")
     r_liderazgo = st.radio("Nivel actual:", opts_liderazgo)
@@ -145,7 +148,7 @@ with col1:
 
     st.subheader("C. Tecnología")
     r_tecnologia = st.radio("Nivel actual:", opts_tecnologia)
-    p_tecnologia = obtener_puntaje(r_tecnologia) # Faltaba esta línea
+    p_tecnologia = obtener_puntaje(r_tecnologia)
 
 with col2:
     st.subheader("D. Salud Financiera")
@@ -161,37 +164,48 @@ puntaje_total = p_liderazgo + p_procesos + p_tecnologia + p_financiera + p_merca
 puntaje_maximo = 25
 porcentaje = (puntaje_total / puntaje_maximo) * 100
 
-# Lógica de Segmentación
+# Lógica de Segmentación (CREAMOS VARIABLES SEPARADAS PARA PDF Y WEB)
 if porcentaje < 40:
-    nivel = "INICIAL 🔴"
+    # Variables con Emojis para la Web
+    nivel_web = "INICIAL 🔴"
     mensaje = "Alto Riesgo Operativo."
     dolor = "La empresa depende totalmente del dueño y procesos manuales."
-    medicina = "💊 Receta: Programa de Estructura y Control Básico (3 Meses)."
+    medicina_web = "💊 Receta: Programa de Estructura y Control Básico (3 Meses)."
+    
+    # Variables LIMPIAS para el PDF
+    nivel_pdf = "INICIAL"
+    medicina_pdf = "Receta: Programa de Estructura y Control Basico (3 Meses).\nNecesitas documentar lo basico y delegar tareas operativas urgentemente."
     accion = "Necesitas documentar lo básico y delegar tareas operativas urgentemente."
+
 elif porcentaje < 70:
-    nivel = "EN DESARROLLO 🟡"
+    nivel_web = "EN DESARROLLO 🟡"
     mensaje = "Procesos Definidos pero no Optimizados."
     dolor = "Existen bases, pero están desconectadas. Hay 'islas' de información."
-    medicina = "💉 Receta: Consultoría de Integración y Estandarización."
+    medicina_web = "💉 Receta: Consultoría de Integración y Estandarización."
+    
+    nivel_pdf = "EN DESARROLLO"
+    medicina_pdf = "Receta: Consultoria de Integracion y Estandarizacion.\nEl foco debe estar en conectar tus areas y asegurar que los procesos se cumplan."
     accion = "El foco debe estar en conectar tus áreas y asegurar que los procesos se cumplan siempre."
+
 else:
-    nivel = "OPTIMIZADO 🟢"
+    nivel_web = "OPTIMIZADO 🟢"
     mensaje = "Enfoque en Innovación y Escalabilidad."
     dolor = "El reto ya no es el orden, sino el crecimiento acelerado."
-    medicina = "🚀 Receta: Consejo Consultivo de Expansión & Transformación Digital."
+    medicina_web = "🚀 Receta: Consejo Consultivo de Expansión & Transformación Digital."
+    
+    nivel_pdf = "OPTIMIZADO"
+    medicina_pdf = "Receta: Consejo Consultivo de Expansion & Transformacion Digital.\nEs momento de usar tus datos para predecir el futuro y automatizar con IA."
     accion = "Es momento de usar tus datos para predecir el futuro y automatizar con IA."
 
-# --- RESULTADOS VISUALES ---
+# --- RESULTADOS VISUALES (USAMOS VARIABLES WEB) ---
 st.divider()
 st.header("📊 Resultados del Diagnóstico")
 
-# Métricas
 m1, m2, m3 = st.columns(3)
 m1.metric("Puntaje Total", f"{puntaje_total}/25")
 m2.metric("Índice de Madurez", f"{porcentaje:.0f}%")
-m3.metric("Nivel Detectado", nivel)
+m3.metric("Nivel Detectado", nivel_web)
 
-# Gráficas
 tab1, tab2 = st.tabs(["🕸️ Radar de Balance", "📊 Detalle por Área"])
 
 datos = {
@@ -212,29 +226,28 @@ with tab1:
         showlegend=False,
         title="Balance de Madurez"
     )
+    # Fix para el warning de container_width
     st.plotly_chart(fig, use_container_width=True)
 
 with tab2:
     st.bar_chart(df.set_index('Área'))
 
-# Recomendación final
-st.success(f"### Diagnóstico Final: {nivel}")
+st.success(f"### Diagnóstico Final: {nivel_web}")
 st.markdown(f"**Detectamos:** {mensaje}")
 st.markdown(f"**Tu Dolor Principal:** {dolor}")
 st.divider()
-st.markdown(f"## {medicina}")
+st.markdown(f"## {medicina_web}")
 st.info(f"**Siguiente Paso Recomendado:** {accion}")
 
-# --- BOTÓN DE ENVÍO ---
+# --- BOTÓN DE ENVÍO (USAMOS VARIABLES PDF) ---
 if st.button("Generar Reporte y Enviar al Consultor"):
     if not nombre_empresa:
         st.warning("Por favor escribe el nombre de la empresa.")
     else:
-        # 1. Crear PDF
-        pdf_bytes = generar_pdf(nombre_empresa, nombre_contacto, nivel, puntaje_total, medicina)
+        # 1. Crear PDF con variables LIMPIAS
+        pdf_bytes = generar_pdf(nombre_empresa, nombre_contacto, nivel_pdf, puntaje_total, medicina_pdf)
         
         # 2. Enviar Correo
-        # NOTA: Asegúrate de configurar 'secrets.toml' en Streamlit
         try:
             tu_correo = st.secrets["correo"]["usuario"] 
             exito = enviar_correo(tu_correo, f"Nuevo Lead: {nombre_empresa}", 
